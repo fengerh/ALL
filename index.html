@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的项目导航 · GitHub 作品集</title>
+  <title>我的GitHub项目导航 v20260410.1100</title>
   <!-- Font Awesome 图标库 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -31,7 +31,7 @@
     /* 头部区域 */
     .header {
       text-align: center;
-      margin-bottom: 48px;
+      margin-bottom: 32px;
     }
 
     .avatar {
@@ -90,6 +90,41 @@
     .github-link:hover {
       background: white;
       box-shadow: 0 6px 12px -6px rgba(0,0,0,0.1);
+    }
+
+    /* 标签筛选栏 —— 低调小巧 */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      margin: 20px 0 24px 0;
+    }
+
+    .filter-btn {
+      background: rgba(255,255,255,0.5);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(200, 210, 230, 0.6);
+      color: #4a5f7a;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: 40px;
+      cursor: pointer;
+      transition: all 0.15s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+    }
+
+    .filter-btn:hover {
+      background: white;
+      border-color: #a0b3d9;
+    }
+
+    .filter-btn.active {
+      background: #3a4f6d;
+      border-color: #3a4f6d;
+      color: white;
+      box-shadow: 0 4px 8px rgba(58, 79, 109, 0.15);
     }
 
     /* 项目卡片网格 */
@@ -198,23 +233,31 @@
       .avatar { width: 80px; height: 80px; border-radius: 24px; }
       .avatar i { font-size: 40px; }
       
-      /* 👇 新增：手机上隐藏卡片图标 */
+      /* 手机隐藏卡片图标 */
       .card-icon {
         display: none;
+      }
+
+      .filter-bar {
+        margin: 16px 0 20px 0;
+      }
+      .filter-btn {
+        font-size: 0.7rem;
+        padding: 5px 12px;
       }
     }
   </style>
 </head>
 <body>
 <div class="container">
-  <!-- 头部：可以替换为你的 GitHub 信息 -->
+  <!-- 头部 -->
   <div class="header">
     <div class="avatar">
-      <i class="fas fa-code-branch"></i> <!-- 或放头像图片 -->
+      <i class="fas fa-code-branch"></i>
     </div>
     <h1>我的项目实验室</h1>
     <div class="subtitle">
-      <span><i class="far fa-folder-open"></i> 6 个开源项目</span>
+      <span id="projectCountText"><i class="far fa-folder-open"></i> 6 个开源项目</span>
       <span>·</span>
       <a class="github-link" href="#" target="_blank" id="githubProfileLink">
         <i class="fab fa-github"></i> GitHub 主页
@@ -222,7 +265,10 @@
     </div>
   </div>
 
-  <!-- 项目卡片网格，通过 JavaScript 动态渲染，方便修改 -->
+  <!-- 标签筛选栏（低调出现） -->
+  <div class="filter-bar" id="filterBar"></div>
+
+  <!-- 项目卡片网格 -->
   <div class="projects-grid" id="projectsGrid"></div>
 
   <!-- 页脚 -->
@@ -234,22 +280,22 @@
 
 <script>
   (function() {
-    // ---------- 请在这里修改你的项目信息 ----------
-    const githubUsername = "fengerh";        // 例如 "octocat"
+    // ---------- 项目配置 ----------
+    const githubUsername = "fengerh";
     const projects = [
       {
         name: "📒 标签笔记",
         description: "标签化笔记管理 · 支持导入导出与编辑，移动端适配。",
-        url: "https://fengerh.github.io/Label_notebook/",  // 替换为实际链接
+        url: "https://fengerh.github.io/Label_notebook/",
         icon: "fa-pen-fancy",
-        tag: "笔记工具"
+        tag: "效率工具"
       },
       {
         name: "🧾 旅行账本",
         description: "旅行账本应用，支持多人AA与本地存储，移动端适配。",
         url: "https://fengerh.github.io/travelAA/",
         icon: "fa-wallet",
-        tag: "效率"
+        tag: "效率工具"
       },
       {
         name: "📈 基金组合回测",
@@ -281,11 +327,51 @@
       }
     ];
 
-    // 渲染卡片
-    const grid = document.getElementById('projectsGrid');
-    function renderCards() {
+    // 当前选中的标签（默认全部）
+    let currentTag = "全部";
+
+    // ---------- 提取所有唯一标签，并加入"全部" ----------
+    function getUniqueTags() {
+      const tags = projects.map(p => p.tag);
+      return ["全部", ...new Set(tags)];
+    }
+
+    // ---------- 渲染筛选按钮 ----------
+    function renderFilterBar() {
+      const filterBar = document.getElementById('filterBar');
+      const tags = getUniqueTags();
       let html = '';
-      projects.forEach((proj, index) => {
+      tags.forEach(tag => {
+        const activeClass = tag === currentTag ? 'active' : '';
+        html += `<button class="filter-btn ${activeClass}" data-tag="${tag}">${tag}</button>`;
+      });
+      filterBar.innerHTML = html;
+    }
+
+    // ---------- 根据当前标签过滤项目 ----------
+    function getFilteredProjects() {
+      if (currentTag === "全部") {
+        return projects;
+      }
+      return projects.filter(p => p.tag === currentTag);
+    }
+
+    // ---------- 渲染卡片 ----------
+    function renderCards() {
+      const grid = document.getElementById('projectsGrid');
+      const filtered = getFilteredProjects();
+      
+      // 更新项目计数
+      const countSpan = document.getElementById('projectCountText');
+      countSpan.innerHTML = `<i class="far fa-folder-open"></i> ${filtered.length} 个项目`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#7f8fa3;">✨ 这个标签下暂时没有项目</div>`;
+        return;
+      }
+
+      let html = '';
+      filtered.forEach(proj => {
         html += `
           <a class="project-card" href="${proj.url}" target="_blank" rel="noopener noreferrer">
             <div class="card-icon">
@@ -303,13 +389,30 @@
       grid.innerHTML = html;
     }
 
-    // 设置 GitHub 链接
+    // ---------- 整体渲染（筛选栏+卡片） ----------
+    function renderAll() {
+      renderFilterBar();
+      renderCards();
+    }
+
+    // ---------- 事件监听：标签点击切换 ----------
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.filter-btn');
+      if (!btn) return;
+      const tag = btn.getAttribute('data-tag');
+      if (tag) {
+        currentTag = tag;
+        renderAll();
+      }
+    });
+
+    // ---------- 设置 GitHub 链接 ----------
     function setLinks() {
       const profileLink = document.getElementById('githubProfileLink');
       const footerRepoLink = document.getElementById('footerRepoLink');
       if (githubUsername && githubUsername !== '你的GitHub用户名') {
         profileLink.href = `https://github.com/${githubUsername}`;
-        footerRepoLink.href = `https://github.com/${githubUsername}/${githubUsername}.github.io`; // 假设此页面放在用户主页仓库
+        footerRepoLink.href = `https://github.com/${githubUsername}/${githubUsername}.github.io`;
       } else {
         profileLink.href = "#";
         footerRepoLink.href = "#";
@@ -317,11 +420,9 @@
       }
     }
 
-    renderCards();
+    // ---------- 初始化 ----------
+    renderAll();
     setLinks();
-
-    // 可选：显示项目计数
-    document.querySelector('.subtitle span:first-child').innerHTML = `<i class="far fa-folder-open"></i> ${projects.length} 个开源项目`;
   })();
 </script>
 </body>
