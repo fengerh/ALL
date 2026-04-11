@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>我的GitHub项目导航 v20260410.1100</title>
+  <title>我的GitHub项目导航 v20260411.2141</title>
   <!-- Font Awesome 图标库 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
@@ -92,7 +92,7 @@
       box-shadow: 0 6px 12px -6px rgba(0,0,0,0.1);
     }
 
-    /* 标签筛选栏 —— 低调小巧 */
+    /* 标签筛选栏 */
     .filter-bar {
       display: flex;
       flex-wrap: wrap;
@@ -178,6 +178,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
     }
 
     .project-title i {
@@ -211,6 +212,22 @@
       align-self: flex-start;
     }
 
+    /* 版本号样式 */
+    .version-badge {
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: #eef2ff;
+      color: #5b6cf7;
+      padding: 2px 8px;
+      border-radius: 30px;
+      margin-left: 4px;
+    }
+
+    .version-badge.unknown {
+      background: #f0f0f0;
+      color: #888;
+    }
+
     /* 页脚 */
     .footer {
       margin-top: 56px;
@@ -233,7 +250,6 @@
       .avatar { width: 80px; height: 80px; border-radius: 24px; }
       .avatar i { font-size: 40px; }
       
-      /* 手机隐藏卡片图标 */
       .card-icon {
         display: none;
       }
@@ -244,6 +260,10 @@
       .filter-btn {
         font-size: 0.7rem;
         padding: 5px 12px;
+      }
+      
+      .project-title {
+        font-size: 1.3rem;
       }
     }
   </style>
@@ -265,11 +285,16 @@
     </div>
   </div>
 
-  <!-- 标签筛选栏（低调出现） -->
+  <!-- 标签筛选栏 -->
   <div class="filter-bar" id="filterBar"></div>
 
   <!-- 项目卡片网格 -->
-  <div class="projects-grid" id="projectsGrid"></div>
+  <div class="projects-grid" id="projectsGrid">
+    <!-- 初始加载中提示（很快会被替换） -->
+    <div style="grid-column:1/-1; text-align:center; padding:40px; color:#7f8fa3;">
+      <i class="fas fa-spinner fa-pulse"></i> 加载项目中...
+    </div>
+  </div>
 
   <!-- 页脚 -->
   <div class="footer">
@@ -287,6 +312,7 @@
         name: "📒 标签笔记",
         description: "标签化笔记管理 · 支持导入导出与编辑，移动端适配。",
         url: "https://fengerh.github.io/Label_notebook/",
+        versionUrl: "https://fengerh.github.io/Label_notebook/index.html",  // 新增：版本获取地址
         icon: "fa-pen-fancy",
         tag: "效率工具"
       },
@@ -294,6 +320,7 @@
         name: "🧾 旅行账本",
         description: "旅行账本应用，支持多人AA与本地存储，移动端适配。",
         url: "https://fengerh.github.io/travelAA/",
+        versionUrl: "https://fengerh.github.io/travelAA/index.html",
         icon: "fa-wallet",
         tag: "效率工具"
       },
@@ -301,6 +328,7 @@
         name: "📈 基金组合回测",
         description: "基金组合模拟回测工具，基于多个基金的净值测算，需要先准备基础数据。",
         url: "https://fengerh.github.io/DCA_backtesting/",
+        versionUrl: "https://fengerh.github.io/DCA_backtesting/index.html",
         icon: "fa-calculator",
         tag: "投资演示"
       },
@@ -308,6 +336,7 @@
         name: "🀄️ 川麻听牌计算",
         description: "根据手牌计算川麻听牌概率，支持多种牌型和规则。",
         url: "https://fengerh.github.io/chuanma/",
+        versionUrl: "https://fengerh.github.io/chuanma/index.html",
         icon: "fa-chess-queen",
         tag: "游戏工具"
       },
@@ -315,6 +344,7 @@
         name: "🧮 川麻记账",
         description: "用于记录川麻游戏的得分和统计。",
         url: "https://fengerh.github.io/chuanma_BILL/",
+        versionUrl: "https://fengerh.github.io/chuanma_BILL/index.html",
         icon: "fa-gamepad",
         tag: "游戏工具"
       },
@@ -322,24 +352,79 @@
         name: "🃏 干瞪眼记分",
         description: "基于手牌和规则的记分器。",
         url: "https://fengerh.github.io/gandengyan_BILL/",
+        versionUrl: "https://fengerh.github.io/gandengyan_BILL/index.html",
         icon: "fa-dice",
         tag: "游戏工具"
       }
+      // 新增项目示例：
+      // {
+      //   name: "🍅 番茄钟",
+      //   description: "简洁的番茄工作法计时器",
+      //   url: "https://fengerh.github.io/pomodoro/",
+      //   versionUrl: "https://fengerh.github.io/pomodoro/index.html",
+      //   icon: "fa-clock",
+      //   tag: "效率工具"
+      // }
     ];
 
     // 当前选中的标签（默认全部）
     let currentTag = "全部";
 
-    // ---------- 提取所有唯一标签，并加入"全部" ----------
-    function getUniqueTags() {
-      const tags = projects.map(p => p.tag);
+    // ---------- 提取版本号 ----------
+    // 从<title>中提取版本号，格式如 "中文名称 v20260410.1100"
+    function extractVersionFromTitle(title) {
+      const match = title.match(/v(\d{8}\.\d{4})/);
+      return match ? match[1] : null;
+    }
+
+    // 获取单个项目的版本号
+    async function fetchProjectVersion(versionUrl) {
+      try {
+        // 加时间戳避免缓存
+        const url = `${versionUrl}?_t=${Date.now()}`;
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const title = doc.querySelector('title')?.textContent || '';
+        
+        return extractVersionFromTitle(title);
+      } catch (error) {
+        console.warn(`获取版本失败: ${versionUrl}`, error);
+        return null;
+      }
+    }
+
+    // 批量获取所有项目的版本号，返回 projects 的深拷贝并附加 version 字段
+    async function fetchAllVersions() {
+      const promises = projects.map(async (project) => {
+        if (!project.versionUrl) return { ...project, version: null };
+        const version = await fetchProjectVersion(project.versionUrl);
+        return { ...project, version };
+      });
+      return Promise.all(promises);
+    }
+
+    // ---------- 标签筛选相关 ----------
+    function getUniqueTags(projectsData) {
+      const tags = projectsData.map(p => p.tag);
       return ["全部", ...new Set(tags)];
     }
 
+    // 根据当前标签过滤（projectsData 已经包含版本信息）
+    function getFilteredProjects(projectsData) {
+      if (currentTag === "全部") {
+        return projectsData;
+      }
+      return projectsData.filter(p => p.tag === currentTag);
+    }
+
     // ---------- 渲染筛选按钮 ----------
-    function renderFilterBar() {
+    function renderFilterBar(projectsData) {
       const filterBar = document.getElementById('filterBar');
-      const tags = getUniqueTags();
+      const tags = getUniqueTags(projectsData);
       let html = '';
       tags.forEach(tag => {
         const activeClass = tag === currentTag ? 'active' : '';
@@ -348,18 +433,10 @@
       filterBar.innerHTML = html;
     }
 
-    // ---------- 根据当前标签过滤项目 ----------
-    function getFilteredProjects() {
-      if (currentTag === "全部") {
-        return projects;
-      }
-      return projects.filter(p => p.tag === currentTag);
-    }
-
-    // ---------- 渲染卡片 ----------
-    function renderCards() {
+    // ---------- 渲染卡片（带版本号） ----------
+    function renderCards(projectsData) {
       const grid = document.getElementById('projectsGrid');
-      const filtered = getFilteredProjects();
+      const filtered = getFilteredProjects(projectsData);
       
       // 更新项目计数
       const countSpan = document.getElementById('projectCountText');
@@ -372,6 +449,10 @@
 
       let html = '';
       filtered.forEach(proj => {
+        const versionHtml = proj.version 
+          ? `<span class="version-badge">v${proj.version}</span>`
+          : `<span class="version-badge unknown">版本未知</span>`;
+        
         html += `
           <a class="project-card" href="${proj.url}" target="_blank" rel="noopener noreferrer">
             <div class="card-icon">
@@ -379,6 +460,7 @@
             </div>
             <div class="project-title">
               ${proj.name}
+              ${versionHtml}
               <i class="fas fa-arrow-right"></i>
             </div>
             <div class="project-desc">${proj.description}</div>
@@ -389,22 +471,41 @@
       grid.innerHTML = html;
     }
 
-    // ---------- 整体渲染（筛选栏+卡片） ----------
-    function renderAll() {
-      renderFilterBar();
-      renderCards();
+    // ---------- 整体渲染（异步获取版本后） ----------
+    async function renderAll() {
+      // 先显示加载状态（已经在 HTML 中预置了）
+      
+      // 获取所有项目的版本号
+      const projectsWithVersions = await fetchAllVersions();
+      
+      // 渲染筛选栏和卡片
+      renderFilterBar(projectsWithVersions);
+      renderCards(projectsWithVersions);
     }
 
-    // ---------- 事件监听：标签点击切换 ----------
-    document.addEventListener('click', function(e) {
-      const btn = e.target.closest('.filter-btn');
-      if (!btn) return;
-      const tag = btn.getAttribute('data-tag');
-      if (tag) {
-        currentTag = tag;
-        renderAll();
-      }
-    });
+    // ---------- 事件监听：标签点击切换（重新获取版本？不用，我们已经有了 projectsWithVersions，但当前实现需要缓存） ----------
+    // 为了在切换标签时不用重新 fetch，我们把带版本的数据存在全局变量里
+    let cachedProjectsWithVersions = null;
+
+    async function init() {
+      cachedProjectsWithVersions = await fetchAllVersions();
+      renderFilterBar(cachedProjectsWithVersions);
+      renderCards(cachedProjectsWithVersions);
+      
+      // 监听标签切换
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.filter-btn');
+        if (!btn) return;
+        const tag = btn.getAttribute('data-tag');
+        if (tag) {
+          currentTag = tag;
+          if (cachedProjectsWithVersions) {
+            renderFilterBar(cachedProjectsWithVersions);  // 更新 active 状态
+            renderCards(cachedProjectsWithVersions);
+          }
+        }
+      });
+    }
 
     // ---------- 设置 GitHub 链接 ----------
     function setLinks() {
@@ -420,9 +521,9 @@
       }
     }
 
-    // ---------- 初始化 ----------
-    renderAll();
+    // ---------- 启动 ----------
     setLinks();
+    init();
   })();
 </script>
 </body>
